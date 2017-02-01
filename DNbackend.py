@@ -168,14 +168,18 @@ def del_node(t,n):
         print n
         logger.warn("Error deleting node: "+n['id'])
 
-def add_controller(t,ip):
+def add_controller(t,ip, switch):
+    check_output(["sudo","ovs-vsctl","set-controller",switch,"tcp:"+ip+":6633"])
+    '''
     for n in t['nodes'].keys():
         if t['nodes'][n]['type']=="OVS":
             try:
                 check_output(["sudo","ovs-vsctl","set-controller",n,"tcp:"+ip+":6633"])
             except:
                 logger.warn("Error adding controller to "+n)
-    t['controller']={"ip":ip}
+    '''
+    t['nodes'][switch]['controller']=ip
+    #t['controller']={"ip":ip}
 
 def create_topology_from_data(t):
     #It's assumed that at this point the topology has been checked through "validate_input_data(t)"

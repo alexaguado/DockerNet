@@ -355,11 +355,11 @@ class attPoint:
             save_state(dnet)
             raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['attachPoints']))
 
-    def OPTIONS(self):
-        #web.header('Access-Control-Allow-Origin', '*')
+    def OPTIONS(self,node):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
         web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
-        web.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
-        raise httpResponse(httpmsgtypes['Success'], 'Successful operation', '{"description":"Options called CORS"}')
+        raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
 
 
 class controller:
@@ -371,10 +371,11 @@ class controller:
         dnet = load_state()
         if dnet == {}:
             dnet = {"nodes": {}, "edges": []}
-        if "controller" not in dnet.keys():
-            raise httpResponse(httpmsgtypes['NotFound'],"There is no controller attached")
-        else:
-            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['controller']))
+        resp={}
+        for k in dnet['nodes'].keys():
+            if "controller" in dnet['nodes'][k].keys():
+                resp[k]=dnet['nodes'][k]['controller']
+        raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(resp))
 
     def POST(self):
         #web.header('Access-Control-Allow-Origin','*')
@@ -387,13 +388,43 @@ class controller:
             data=json.loads(web.data())
         except:
             raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
-        add_controller(dnet,data['ip'])
+        if data['switch'] not in dnet['nodes'].keys() or dnet['nodes'][data['switch']]['type'] != "OVS":
+            raise httpResponse(httpmsgtypes['NotFound'],"Node '"+data['switch']+"' not found")
+        add_controller(dnet,data['ip'],data['switch'])
         save_state(dnet)
-        raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['controller']))
+        raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['nodes'][data['switch']]))
 
-    def OPTIONS(self,edge):
+    def DELETE(self):
         #web.header('Access-Control-Allow-Origin','*')
         web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        #web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        logger.info("Edge CTRL ::: DELETE")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if switch not in dnet['nodes'].keys():
+            raise httpResponse(httpmsgtypes['NotFound'],"Switch "+switch+" not found")
+        if "controller" not in dnet['nodes'][switch].keys():
+            raise httpResponse(httpmsgtypes['NotFound'],"No controller in switch "+switch)
+        else:
+            try:
+                check_output(["sudo","ovs-vsctl","del-controller",switch])
+            except:
+                logger.info("ERROR")
+            del dnet['nodes'][switch]['controller']
+            save_state(dnet)
+            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet))
+
+
+    def OPTIONS(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
         raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
 
 

@@ -86,8 +86,8 @@ font-family: 'Ubuntu', sans-serif;
     position: fixed;
     z-index: 3;
     bottom: 10px;
-    width: 14%;
-    left: 3%;
+    width: 17%;
+    left: 2.5%;
     background-color: #555152; /* Red */
     border: none;
     color: white;
@@ -104,8 +104,8 @@ font-family: 'Ubuntu', sans-serif;
     position: fixed;
     z-index: 3;
     bottom: 10px;
-    width: 14%;
-    left: 19%;
+    width: 17%;
+    left: 22%;
     background-color: #555152; /* Green */
     border: none;
     color: white;
@@ -126,8 +126,8 @@ font-family: 'Ubuntu', sans-serif;
     position: fixed;
     z-index: 3;
     bottom: 10px;
-    width: 14%;
-    left: 35%;
+    width: 17%;
+    left: 41.5%;
     background-color: #555152; /* Green */
     border: none;
     color: white;
@@ -152,8 +152,8 @@ font-family: 'Ubuntu', sans-serif;
     position: fixed;
     z-index: 3;
     bottom: 10px;
-    width: 14%;
-    left: 51%;
+    width: 17%;
+    left: 61%;
     background-color: #555152; /* Green */
     border: none;
     color: white;
@@ -174,8 +174,8 @@ font-family: 'Ubuntu', sans-serif;
     position: fixed;
     z-index: 3;
     bottom: 10px;
-    width: 14%;
-    left: 67%;
+    width: 17%;
+    left: 80.5%;
     background-color: #555152; /* Green */
     border: none;
     color: white;
@@ -312,7 +312,7 @@ margin-top: calc(50vh - 60px);
 <div id="loadn" onclick="openLoad()">Load</div>
 <div id="delnet" onclick="deleteNetwork()">Delete All</div>
 <a onclick="downl(this)"><div id="downnet">Download</div></a>
-<div id="controller" onclick="controllerShow()">Controller</div>
+<!--<div id="controller" onclick="controllerShow()">Controller</div>-->
 <div id="netinfo"></div>
 <div class="modal fade" id="myModalInfo" role="dialog">
   <div class="modal-dialog">
@@ -453,7 +453,7 @@ margin-top: calc(50vh - 60px);
          staticedges=[
 
          ];
-         hostip="138.100.10.76";
+         hostip="localhost";
          edges.add(staticedges);
          var container = document.getElementById('network');
          var data = {
@@ -579,6 +579,10 @@ margin-top: calc(50vh - 60px);
              } else {
                n.group="fixed";
                n.dpid=aux.dpid;
+                 n.optional={};
+                 if (aux.hasOwnProperty("controller")){
+                     n.optional.controller=aux.controller;
+                 }
              }
              nodes.add(n);
            }
@@ -716,7 +720,30 @@ margin-top: calc(50vh - 60px);
          var oldnodes=[];
          for(var k in topologya.nodes) oldnodes.push(k);
          var newnodes=[];
-         for(var k in result.nodes) newnodes.push(k);
+         for(var k in result.nodes) {
+             newnodes.push(k);
+             for (var i=0; i<oldnodes.length; i++){
+                 if ((oldnodes[i].localeCompare(k)==0)&&!(deepCompare(topologya.nodes[oldnodes[i]],result.nodes[k]))){
+                     naux=nodes.get(k);
+                     if ("LC".localeCompare(result.nodes[k].type)!=0){
+                        naux.dpid=result.nodes[k].dpid;
+                        if (result.nodes[k].hasOwnProperty("controller")){
+                         naux.optional.controller=result.nodes[k].controller;
+                        }
+                         else if (!(result.nodes[k].hasOwnProperty("controller")) && topologya.nodes[oldnodes[i]].hasOwnProperty("controller")){
+                            console.log("CTRL DELETED");
+                            delete naux.optional["controller"];
+                            console.log(naux);
+                        }
+                     nodes.update(naux);
+                     naux2=nodes.get(k);
+                         console.log(naux2);
+                    }
+                 }
+             }
+         }
+           console.log(newnodes);
+           console.log(oldnodes);
          for (var i=0; i<oldnodes.length; i++){
            if (newnodes.indexOf(oldnodes[i])==-1){
              nodes.remove({id:oldnodes[i]});
@@ -746,6 +773,10 @@ margin-top: calc(50vh - 60px);
              } else {
                n.group="fixed";
                n.dpid=aux.dpid;
+                 n.optional={};
+                 if (aux.hasOwnProperty("controller")){
+                     n.optional.controller=aux.controller;
+                 }
              }
              console.log("Adding node "+n.id);
              nodes.add(n);
@@ -853,10 +884,11 @@ margin-top: calc(50vh - 60px);
 
   function completeController(){
     cip=document.getElementById("controlip").value;
-    $.ajax({url: "http://"+hostip+":8085/dockernet/rest/controller", type: "POST", dataType: "application/json", data:'{"ip":"'+cip+'"}', success: function(result){
+    $.ajax({url: "http://"+hostip+":8085/dockernet/rest/controller", type: "POST", dataType: "application/json", data:'{"ip":"'+cip+'","switch":"'+active+'"}', success: function(result){
         console.log("OVS "+nid+" added!");
   }
 });
+      updateInfo();
   $('#myModalController').modal('toggle');
 
   }
@@ -1115,7 +1147,11 @@ margin-top: calc(50vh - 60px);
              }
            }
          }
+           if(n.optional.hasOwnProperty("controller")){
+                  htmltxt=htmltxt+"<h5>controller: "+n.optional.controller+'</h5><button onclick="delctrl()" id="delintfbut" class="inbut">Del</button>';
+           }
          htmltxt=htmltxt+"<br><br><button class='inbut' id='bdel' type='button' onclick='showInterface(); return false;'>Attach</button>";
+           htmltxt=htmltxt+"<br><br><button class='inbut' id='bdel' type='button' onclick='controllerShow(); return false;'>Controller</button>";
        }
        htmltxt=htmltxt+"<br><br><button class='inbut' id='bdel' type='button' onclick='deletenode(); return false;'>Delete</button>";
        tab35.innerHTML=htmltxt;
@@ -1140,6 +1176,15 @@ margin-top: calc(50vh - 60px);
   function delintf(intf){
     valor='{"switch":"'+active+'","interface":"'+intf+'"}';
     $.ajax({url: "http://"+hostip+":8085/dockernet/rest/attachPoints", type: "DELETE", dataType: "application/json", data:valor, success: function(result){
+      console.log("Deleted");
+    },error: function(xhr, status, error) {
+        updateInfo();
+    }
+  });
+  }
+  function delctrl(){
+    valor='{"switch":"'+active+'"}';
+    $.ajax({url: "http://"+hostip+":8085/dockernet/rest/controller", type: "DELETE", dataType: "application/json", data:valor, success: function(result){
       console.log("Deleted");
     },error: function(xhr, status, error) {
         updateInfo();
@@ -1191,7 +1236,12 @@ margin-top: calc(50vh - 60px);
                    }
                  }
                }
+                 console.log(n);
+                 if(n.optional.hasOwnProperty("controller")){
+                  htmltxt=htmltxt+"<h5>controller: "+n.optional.controller+'</h5><button onclick="delctrl()" id="delintfbut" class="inbut">Del</button>';
+                 }
                htmltxt=htmltxt+"<br><br><button class='inbut' id='bdel' type='button' onclick='showInterface(); return false;'>Attach</button>";
+                 htmltxt=htmltxt+"<br><br><button class='inbut' id='bdel' type='button' onclick='controllerShow(); return false;'>Controller</button>";
              }
              htmltxt=htmltxt+"<br><br><button class='inbut' id='bdel' type='button' onclick='deletenode(); return false;'>Delete</button>";
              tab35.innerHTML=htmltxt;
