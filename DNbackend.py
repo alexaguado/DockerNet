@@ -187,8 +187,9 @@ def create_topology_from_data(t):
         add_node(t,t['nodes'][k])
     for e in t['edges']:
         add_edge(t,e)
-    if "controller" in t.keys():
-        add_controller(t,t['controller']['ip'])
+    for k in t['nodes'].keys():
+        if "controller" in t['nodes'][k].keys():
+            add_controller(t,t['nodes'][k]['controller']['ip'], k)
     i=0
     if "attachPoints" in t.keys():
         for ap in t['attachPoints']:

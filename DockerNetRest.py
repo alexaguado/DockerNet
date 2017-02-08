@@ -51,8 +51,6 @@ class topologymgmt:
                 create_topology_from_data(t)
                 dnet['nodes']=t['nodes']
                 dnet['edges']=t['edges']
-                if "controller" in t.keys():
-                    dnet['controller']=t['controller']
                 if "attachPoints" in t.keys():
                     dnet['attachPoints']=t['attachPoints']
                 save_state(dnet)
