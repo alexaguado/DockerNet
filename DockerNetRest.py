@@ -1,6 +1,6 @@
 __author__ = 'alejandroaguado'
 
-import web
+import web, time
 from  httpResponses import *
 from DNbackend import *
 import netifaces as ni
@@ -14,7 +14,8 @@ urls = (
   rooturl+'attachPoints', 'attPoint',
   rooturl+'controller', 'controller',
   rooturl+'images', 'images',
-  rooturl+'interfaces', 'interfaces'
+  rooturl+'interfaces', 'interfaces',
+  rooturl+'stats/(.*)', 'stats'
 )
 
 class MyApplication(web.application):
@@ -353,7 +354,7 @@ class attPoint:
             save_state(dnet)
             raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['attachPoints']))
 
-    def OPTIONS(self,node):
+    def OPTIONS(self):
         #web.header('Access-Control-Allow-Origin','*')
         web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
         web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
@@ -453,11 +454,36 @@ class interfaces:
         pint = ni.interfaces()
         interfaces = []
         for i in pint:
-            if ("em" in i or "eth" in i or "enp" in i) and ("veth" not in i and "ovs" not in i):
+            if ("em" in i or "eth" in i or "enx" in i or "rename" in i) and ("veth" not in i and "ovs" not in i):
                 interfaces.append(i)
         raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(interfaces))
 
     def OPTIONS(self):
+        web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
+
+class stats:
+
+    def GET(self,node):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge INTFS ::: GET")
+        try:
+            print stts
+            st=stts['stats']
+            if node==None or node=="" or node=="-1" or node=="all":
+                resp=json.dumps(st)
+            else:
+                if node in st.keys():
+                    resp=json.dumps(st[node])
+                else:
+                    resp='{"Error":"Node not found"}'
+        except:
+            resp='{"Error":"bad response"}'
+        raise httpResponse(httpmsgtypes['Success'],'Success',resp)
+
+    def OPTIONS(self,node):
         web.header('Access-Control-Allow-Origin','*')
         web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
         raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')

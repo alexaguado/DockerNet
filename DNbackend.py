@@ -15,6 +15,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+stts={"stats":{}}
+
 docky=Client(base_url='unix://var/run/docker.sock')
 
 def load_state():
@@ -199,6 +201,22 @@ def create_topology_from_data(t):
             except:
                 logger.warn("Error adding attachment point: "+json.dumps(ap))
                 del t[i]
+
+
+
+def get_stats():
+    stop=True;
+    while (stop):
+        try:
+            stts['stats'] = json.loads(check_output(["./get_stats.sh"]))
+        except ValueError:
+            print "ERROR GATHERING STATS"
+        time.sleep(5)
+
+
+import threading
+processThread = threading.Thread(target=get_stats, args=())  # <- note extra ','
+processThread.start()
 
 dnet=load_state()
 if dnet=={}:

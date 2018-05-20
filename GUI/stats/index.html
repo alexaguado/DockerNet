@@ -1,0 +1,221 @@
+
+<!doctype html>
+<html>
+
+<head>
+    <title>DNMonitor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"></script>
+    <script src="utils.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <style>
+    canvas {
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="container" style="width: 48%; margin-left: 1%; margin-top: 12%; float: left; clear: none; display:inline-block; position: absolute;">
+        <canvas id="canvas"></canvas>
+    </div>
+    <div id="container2" style="width: 48%; margin-left: 51%; margin-top: 12%; float: left; clear: none;display:inline-block; position: absolute;">
+        <canvas id="canvas2"></canvas>
+    </div>
+    <h5>Refresh time = 5 seconds</h5>
+    <script>
+        var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        var NODES = [];
+        var color = Chart.helpers.color;
+        var barChartData = {
+            labels: [],
+            datasets: [{
+                label: 'CPU',
+                backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
+                borderColor: window.chartColors.red,
+                borderWidth: 1,
+                data: [
+                ]
+            }]
+
+        };
+        var barChartData2 = {
+            labels: [],
+            datasets: [{
+                label: 'Mem',
+                backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+                borderColor: window.chartColors.blue,
+                borderWidth: 1,
+                data: [
+                ]
+            }]
+
+        };
+
+        window.onload = function() {
+            var ctx = document.getElementById("canvas").getContext("2d");
+            var ctx2 = document.getElementById("canvas2").getContext("2d");
+            window.myBar = new Chart(ctx, {
+                type: 'bar',
+                data: barChartData,
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Computing Consumption (in %)'
+                    }
+                }
+            });
+            window.myBar2 = new Chart(ctx2, {
+                type: 'bar',
+                data: barChartData2,
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Memory Consumption (in %)'
+                    }
+                }
+            });
+
+        };
+
+/*        document.getElementById('randomizeData').addEventListener('click', function() {
+            var zero = false;
+            barChartData.datasets.forEach(function(dataset) {
+                dataset.data = dataset.data.map(function() {
+                    return zero ? 0.0 : randomScalingFactor();
+                });
+                console.log(dataset.data);
+            });
+            window.myBar.update();
+        });
+
+        document.getElementById('test').addEventListener('click', function() {
+            var zero = Math.random() < 0.2 ? true : false;
+            barChartData.datasets.forEach(function(dataset) {
+                dataset.data = dataset.data.map(function() {
+                    return 100;
+                });
+
+            });
+            window.myBar.update();
+        });*/
+
+        var colorNames = Object.keys(window.chartColors);
+/*        document.getElementById('addDataset').addEventListener('click', function() {
+            var colorName = colorNames[barChartData.datasets.length % colorNames.length];;
+            var dsColor = window.chartColors[colorName];
+            var newDataset = {
+                label: 'Dataset ' + barChartData.datasets.length,
+                backgroundColor: color(dsColor).alpha(0.5).rgbString(),
+                borderColor: dsColor,
+                borderWidth: 1,
+                data: []
+            };
+
+            for (var index = 0; index < barChartData.labels.length; ++index) {
+                newDataset.data.push(randomScalingFactor());
+            }
+
+            barChartData.datasets.push(newDataset);
+            window.myBar.update();
+        });*/
+
+        //Interesting but do not use!!
+/*        document.getElementById('addData').addEventListener('click', function() {
+            if (barChartData.datasets.length > 0) {
+                var month = MONTHS[barChartData.labels.length % MONTHS.length];
+                barChartData.labels.push(month);
+
+                for (var index = 0; index < barChartData.datasets.length; ++index) {
+                    //window.myBar.addData(randomScalingFactor(), index);
+                    barChartData.datasets[index].data.push(randomScalingFactor());
+                }
+
+                window.myBar.update();
+            }
+        });*/
+
+        function updateInfo(index,cpu,mem){
+          barChartData.datasets[0].data[index]=cpu;
+          barChartData2.datasets[0].data[index]=mem;
+          window.myBar.update();
+          window.myBar2.update();
+        }
+
+        function addNode(node,cpu,mem) {
+              NODES.push(node);
+              barChartData.labels.push(node);
+              barChartData2.labels.push(node);
+              barChartData.datasets[0].data.push(cpu);
+              barChartData2.datasets[0].data.push(mem);
+              window.myBar.update();
+              window.myBar2.update();
+        }
+        function delNode(node,index) {
+              NODES.splice(index,1);
+              barChartData.labels.splice(index,1);
+              barChartData2.labels.splice(index,1);
+              barChartData.datasets[0].data.splice(index,1);
+              barChartData2.datasets[0].data.splice(index,1);
+              window.myBar.update();
+              window.myBar2.update();
+        }
+        var hostip = "localhost"
+        update();
+        setInterval(update,5000);
+      function update(){
+        $.ajax({url: "http://"+hostip+":8085/dockernet/rest/stats/", success: function(result){
+            var aux=[];
+          for(var k in result) {
+            if (NODES.indexOf(k)>=0){
+              console.log("El nodo "+k+" ya existe. Update info");
+              var sipiu=result[k].CPU.substring(0,result[k].CPU.length-1);
+              var memo=result[k].Mem.substring(0,result[k].Mem.length-1);
+              updateInfo(NODES.indexOf(k),sipiu,memo);
+            } else{
+              console.log("Adding new node: "+k);
+              //console.log(result[k])
+              var sipiu=result[k].CPU.substring(0,result[k].CPU.length-1);
+              var memo=result[k].Mem.substring(0,result[k].Mem.length-1);
+              addNode(k,sipiu,memo);
+            }
+              aux.push(k)
+          }
+            for (var i = 0; i < NODES.length; i++) {
+                if (aux.indexOf(NODES[i])<0){
+                    console.log("Deleting Node: "+NODES[i]);
+                    console.log(i);
+                    delNode(NODES[i],i);
+                }
+            }
+        }
+      })}
+      
+/*        document.getElementById('removeDataset').addEventListener('click', function() {
+            barChartData.datasets.splice(0, 1);
+            window.myBar.update();
+        });*/
+
+/*        document.getElementById('removeData').addEventListener('click', function() {
+            barChartData.labels.splice(-1, 1); // remove the label first
+
+            barChartData.datasets.forEach(function(dataset, datasetIndex) {
+                dataset.data.pop();
+            });
+
+            window.myBar.update();
+        });*/
+    </script>
+</body>
+
+</html>

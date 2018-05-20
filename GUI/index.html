@@ -4,8 +4,8 @@
 <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
   <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-  <script type="text/javascript" src="vis.min.js"></script>
-    <link href="vis.min.css" rel="stylesheet" type="text/css"/>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css"/>
 <style>
     .mynetwork {
             position: absolute;
@@ -45,6 +45,13 @@
     #cabeza{
         height: 90px;
         background-color: #2E2633;
+    }
+    #thermo{
+      opacity: 0.5;
+      height: 50px;
+      position: absolute;
+      margin-left: 10px;
+      margin-top: 30px;
     }
     #htitle {
     text-shadow: 0.05em 0.05em #555152;
@@ -307,10 +314,11 @@ margin-top: calc(50vh - 60px);
 
 <div class="mynetwork" id="network">
 </div>
+<img src="thermo.png" id="thermo">
 <div id="reset" onclick="addContainerShow()">LC</div>
 <div id="save" onclick="addOVSshow()">OVS</div>
 <div id="loadn" onclick="openLoad()">Load</div>
-<div id="delnet" onclick="deleteNetwork()">Delete All</div>
+<div id="delnet" onclick="showDeleteConfirmation()">Delete All</div>
 <a onclick="downl(this)"><div id="downnet">Download</div></a>
 <!--<div id="controller" onclick="controllerShow()">Controller</div>-->
 <div id="netinfo"></div>
@@ -344,6 +352,28 @@ margin-top: calc(50vh - 60px);
       </div>
       <div class="modal-body" id="infoIntf">
 
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+  <div class="modal fade" id="myModalDelete" role="dialog">
+  <div class="modal-dialog">
+
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Add Edge</h4>
+      </div>
+      <div class="modal-body">
+          <h4>Are you sure you want to delete?</h4>
+        <form role="form" action="javascript:deleteNetwork();">
+          <br><br><button type="submit" class="btn btn-default">Submit</button>
+          </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -893,6 +923,10 @@ margin-top: calc(50vh - 60px);
 
   }
 
+  function showDeleteConfirmation(){
+          $('#myModalDelete').modal('show');
+  }
+
   function controllerShow(){
     $('#myModalController').modal('show');
   }
@@ -993,6 +1027,7 @@ margin-top: calc(50vh - 60px);
   }
 
   function deleteNetwork(){
+      $('#myModalDelete').modal('toggle');
     loaderon();
     $.ajax({url: "http://"+hostip+":8085/dockernet/rest/topology", type: "DELETE", success: function(result){
       console.log("Topology deleted");
@@ -1275,6 +1310,9 @@ margin-top: calc(50vh - 60px);
 
       }
 
+      document.getElementById('thermo').addEventListener('click', function() {
+        window.open("http://"+hostip+"/dockernet/stats");
+      });
 
 
 
