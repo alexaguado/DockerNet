@@ -1,12 +1,12 @@
 # DockerNet
 
+![](img/dn.png)
+
 ### Overview
 
 This is a first version of a simple python-based tool and a web, called Dockernet.
 
 It allows to create virtual networks using containers (Docker) and OpenVSwitches.
-
-Dependencies, examples, links to other required tools and a list of next steps/tasks will be added in few weeks.
 
 ---
 
