@@ -200,7 +200,15 @@ def create_topology_from_data(t):
                 i+=1
             except:
                 logger.warn("Error adding attachment point: "+json.dumps(ap))
-                del t[i]
+                del t['attachPoints'][i]
+    if "vxlantunnel" in t.keys():
+        for ap in t['vxlantunnel']:
+            try:
+                check_output(["sudo","ovs-vsctl","add-port",ap['switch'],ap['port'],"--","set","interface",ap['port'],"type=vxlan","options:remote_ip="+ap['remote'],"options:key=flow"])
+                i+=1
+            except:
+                logger.warn("Error adding tunnel point: "+json.dumps(ap))
+                del t['vxlantunnel'][i]
 
 
 
