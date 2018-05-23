@@ -56,6 +56,8 @@ def add_node(t,n):
                 j+=2
             dpid=dpid[:-1]
             n['dpid']=dpid
+            if "stp" in n.keys() and n['stp']:
+                check_output(["sudo","ovs-vsctl","set","bridge",n['id'],"stp_enable=true"])
         elif n['type']=="LC":
             hc=docky.create_host_config(privileged=True)
             docky.create_container(image=n['image'], stdin_open=True, tty=True,command="/bin/bash", name=n['id'], detach=True, host_config=hc)

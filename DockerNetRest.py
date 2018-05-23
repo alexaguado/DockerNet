@@ -13,6 +13,7 @@ urls = (
   rooturl+'edges/(.*)', 'edgemgmt',
   rooturl+'attachPoints', 'attPoint',
   rooturl+'vxlantunnel', 'vxlantunnel',
+  rooturl+'stp', 'stp',
   rooturl+'controller', 'controller',
   rooturl+'images', 'images',
   rooturl+'interfaces', 'interfaces',
@@ -370,7 +371,7 @@ class vxlantunnel:
     def GET(self):
         #web.header('Access-Control-Allow-Origin','*')
         web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
-        logger.info("Edge ATTP ::: GET")
+        logger.info("Edge VXLAN ::: GET")
         dnet = load_state()
         if dnet == {}:
             dnet = {"nodes": {}, "edges": []}
@@ -382,7 +383,7 @@ class vxlantunnel:
     def POST(self):
         #web.header('Access-Control-Allow-Origin','*')
         web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
-        logger.info("Edge ATTP ::: POST")
+        logger.info("Edge VXLAN ::: POST")
         dnet = load_state()
         if dnet == {}:
             dnet = {"nodes": {}, "edges": []}
@@ -413,7 +414,7 @@ class vxlantunnel:
         #web.header('Access-Control-Allow-Origin','*')
         web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
         web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
-        logger.info("Edge ATTP ::: DELETE")
+        logger.info("Edge VXLAN ::: DELETE")
         dnet = load_state()
         if dnet == {}:
             dnet = {"nodes": {}, "edges": []}
@@ -428,6 +429,74 @@ class vxlantunnel:
         else:
             check_output(["sudo","ovs-vsctl","del-port",switch,port])
             dnet['vxlantunnel'].remove(data)
+            save_state(dnet)
+            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['vxlantunnel']))
+
+    def OPTIONS(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
+
+#-------- stp --------
+class stp:
+
+    def GET(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge STP ::: GET")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        resp={"nodes":{}}
+        for k in dnet['nodes'].keys():
+            if 'stp' in dnet['nodes'][k].keys():
+                resp["nodes"][k]=dnet['nodes'][k]
+        raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(resp))
+
+
+    def POST(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge STP ::: POST")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if switch not in dnet['nodes'].keys() or dnet['nodes'][switch]['type'] != "OVS":
+            raise httpResponse(httpmsgtypes['NotFound'],"Node "+switch+" is not valid")
+        #try:
+        check_output(["sudo","ovs-vsctl","set","bridge",switch,"stp_enable=true"])
+        dnet["nodes"][switch]['stp']=True
+        save_state(dnet)
+        raise httpResponse(httpmsgtypes['Success'],'Success',"OK")
+        #except:
+         #   raise httpResponse(httpmsgtypes['InternalServer'],'Error attaching network')
+
+    def DELETE(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        logger.info("Edge STP ::: DELETE")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if switch not in dnet['nodes'].keys() or dnet['nodes'][switch]['type'] != "OVS":
+            raise httpResponse(httpmsgtypes['NotFound'],"switch not found")
+        if "stp" not in dnet['nodes'][switch].keys():
+            raise httpResponse(httpmsgtypes['NotFound'],"switch using stp")
+        else:
+            check_output(["sudo","ovs-vsctl","set","bridge",switch,"stp_enable=false"])
+            del dnet['nodes'][switch]['stp']
             save_state(dnet)
             raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['vxlantunnel']))
 
