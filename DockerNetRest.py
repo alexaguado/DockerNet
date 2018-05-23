@@ -12,6 +12,7 @@ urls = (
   rooturl+'nodes/(.*)', 'nodemgmt',
   rooturl+'edges/(.*)', 'edgemgmt',
   rooturl+'attachPoints', 'attPoint',
+  rooturl+'vxlantunnel', 'vxlantunnel',
   rooturl+'controller', 'controller',
   rooturl+'images', 'images',
   rooturl+'interfaces', 'interfaces',
@@ -54,6 +55,8 @@ class topologymgmt:
                 dnet['edges']=t['edges']
                 if "attachPoints" in t.keys():
                     dnet['attachPoints']=t['attachPoints']
+                if "vxlantunnel" in t.keys():
+                    dnet['vxlantunnel']=t['vxlantunnel']
                 save_state(dnet)
             except:
                 raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
@@ -77,6 +80,8 @@ class topologymgmt:
             del dnet['controller']
         if "attachPoints" in dnet.keys():
             del dnet['attachPoints']
+        if "vxlantunnel" in dnet.keys():
+            del dnet['vxlantunnel']
         save_state(dnet)
         raise httpResponse(httpmsgtypes['Success'],'Successful operation',json.dumps(dnet))
 
@@ -287,7 +292,6 @@ class edgemgmt:
         raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
 
 
-#TODO: Needs to be tested
 #-------- AttchPoint --------
 class attPoint:
 
@@ -360,6 +364,78 @@ class attPoint:
         web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
         raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
 
+#-------- tunnel --------
+class vxlantunnel:
+
+    def GET(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge ATTP ::: GET")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        if 'vxlantunnel' in dnet.keys():
+            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['vxlantunnel']))
+        else:
+            raise httpResponse(httpmsgtypes['NotFound'],"No vxlantunnels points found")
+
+    def POST(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge ATTP ::: POST")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+            port=data['port']
+            remoteip=data['remote']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if switch not in dnet['nodes'].keys() or dnet['nodes'][switch]['type'] != "OVS":
+            raise httpResponse(httpmsgtypes['NotFound'],"Node "+switch+" is not valid")
+        if "vxlantunnel" in dnet.keys():
+            for ap in dnet['vxlantunnel']:
+                if (port == ap['port']) and (switch == ap['switch']):
+                    raise httpResponse(httpmsgtypes['Conflict'],"The port already exists at the switch.")
+        #try:
+        check_output(["sudo","ovs-vsctl","add-port",switch,port,"--","set","interface",port,"type=vxlan","options:remote_ip="+remoteip,"options:key=flow"])
+        if "vxlantunnel" not in dnet.keys():
+            dnet['vxlantunnel']=[]
+        dnet['vxlantunnel'].append(data)
+        save_state(dnet)
+        raise httpResponse(httpmsgtypes['Success'],'Success',"OK")
+        #except:
+         #   raise httpResponse(httpmsgtypes['InternalServer'],'Error attaching network')
+
+    def DELETE(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        logger.info("Edge ATTP ::: DELETE")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+            port=data['port']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if "vxlantunnel" not in dnet.keys() or data not in dnet['vxlantunnel']:
+            raise httpResponse(httpmsgtypes['NotFound'],"tunnel not found")
+        else:
+            check_output(["sudo","ovs-vsctl","del-port",switch,port])
+            dnet['vxlantunnel'].remove(data)
+            save_state(dnet)
+            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['vxlantunnel']))
+
+    def OPTIONS(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
 
 class controller:
 
