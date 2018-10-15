@@ -13,6 +13,7 @@ urls = (
   rooturl+'edges/(.*)', 'edgemgmt',
   rooturl+'attachPoints', 'attPoint',
   rooturl+'vxlantunnel', 'vxlantunnel',
+  rooturl+'gretunnel', 'gretunnel',
   rooturl+'stp', 'stp',
   rooturl+'controller', 'controller',
   rooturl+'images', 'images',
@@ -365,7 +366,7 @@ class attPoint:
         web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
         raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
 
-#-------- tunnel --------
+#-------- vxlan tunnel --------
 class vxlantunnel:
 
     def GET(self):
@@ -401,7 +402,12 @@ class vxlantunnel:
                 if (port == ap['port']) and (switch == ap['switch']):
                     raise httpResponse(httpmsgtypes['Conflict'],"The port already exists at the switch.")
         #try:
-        check_output(["sudo","ovs-vsctl","add-port",switch,port,"--","set","interface",port,"type=vxlan","options:remote_ip="+remoteip,"options:key=flow"])
+
+        vni=""
+        if "vni" in data.keys(): vni=data["vni"]
+        else: vni="flow"
+
+        check_output(["sudo","ovs-vsctl","add-port",switch,port,"--","set","interface",port,"type=vxlan","options:remote_ip="+remoteip,"options:key="+vni])
         if "vxlantunnel" not in dnet.keys():
             dnet['vxlantunnel']=[]
         dnet['vxlantunnel'].append(data)
@@ -431,6 +437,79 @@ class vxlantunnel:
             dnet['vxlantunnel'].remove(data)
             save_state(dnet)
             raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['vxlantunnel']))
+
+    def OPTIONS(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        raise httpResponse(httpmsgtypes['Success'],'Successful operation','{"description":"Options called CORS"}')
+
+#-------- gre tunnel --------
+class gretunnel:
+
+    def GET(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge GRE ::: GET")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        if 'gretunnel' in dnet.keys():
+            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['gretunnel']))
+        else:
+            raise httpResponse(httpmsgtypes['NotFound'],"No gretunnels points found")
+
+    def POST(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        logger.info("Edge GRE ::: POST")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+            port=data['port']
+            remoteip=data['remote']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if switch not in dnet['nodes'].keys() or dnet['nodes'][switch]['type'] != "OVS":
+            raise httpResponse(httpmsgtypes['NotFound'],"Node "+switch+" is not valid")
+        if "gretunnel" in dnet.keys():
+            for ap in dnet['gretunnel']:
+                if (port == ap['port']) and (switch == ap['switch']):
+                    raise httpResponse(httpmsgtypes['Conflict'],"The port already exists at the switch.")
+
+        check_output(["sudo","ovs-vsctl","add-port",switch,port,"--","set","interface",port,"type=gre","options:remote_ip="+remoteip])
+        if "gretunnel" not in dnet.keys():
+            dnet['gretunnel']=[]
+        dnet['gretunnel'].append(data)
+        save_state(dnet)
+        raise httpResponse(httpmsgtypes['Success'],'Success',"OK")
+        #except:
+         #   raise httpResponse(httpmsgtypes['InternalServer'],'Error attaching network')
+
+    def DELETE(self):
+        #web.header('Access-Control-Allow-Origin','*')
+        web.header('Access-Control-Allow-Headers','Origin, X-Requested-With, Content-Type, Accept, Authorization')
+        web.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE")
+        logger.info("Edge GRE ::: DELETE")
+        dnet = load_state()
+        if dnet == {}:
+            dnet = {"nodes": {}, "edges": []}
+        try:
+            data=json.loads(web.data())
+            switch=data['switch']
+            port=data['port']
+        except:
+            raise httpResponse(httpmsgtypes['BadRequest'],"Malformed JSON")
+        if "gretunnel" not in dnet.keys() or data not in dnet['gretunnel']:
+            raise httpResponse(httpmsgtypes['NotFound'],"tunnel not found")
+        else:
+            check_output(["sudo","ovs-vsctl","del-port",switch,port])
+            dnet['gretunnel'].remove(data)
+            save_state(dnet)
+            raise httpResponse(httpmsgtypes['Success'],'Success',json.dumps(dnet['gretunnel']))
 
     def OPTIONS(self):
         #web.header('Access-Control-Allow-Origin','*')

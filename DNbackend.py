@@ -206,11 +206,22 @@ def create_topology_from_data(t):
     if "vxlantunnel" in t.keys():
         for ap in t['vxlantunnel']:
             try:
-                check_output(["sudo","ovs-vsctl","add-port",ap['switch'],ap['port'],"--","set","interface",ap['port'],"type=vxlan","options:remote_ip="+ap['remote'],"options:key=flow"])
+                vni=""
+                if "vni" in ap.keys(): vni=ap["vni"]
+                else: vni="flow"
+                check_output(["sudo","ovs-vsctl","add-port",ap['switch'],ap['port'],"--","set","interface",ap['port'],"type=vxlan","options:remote_ip="+ap['remote'],"options:key="+vni])
                 i+=1
             except:
                 logger.warn("Error adding tunnel point: "+json.dumps(ap))
                 del t['vxlantunnel'][i]
+    if "gretunnel" in t.keys():
+        for ap in t['gretunnel']:
+            try:
+                check_output(["sudo","ovs-vsctl","add-port",ap['switch'],ap['port'],"--","set","interface",ap['port'],"type=gre","options:remote_ip="+ap['remote']])
+                i+=1
+            except:
+                logger.warn("Error adding tunnel point: "+json.dumps(ap))
+                del t['gretunnel'][i]
 
 
 
